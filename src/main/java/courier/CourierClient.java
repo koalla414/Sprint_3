@@ -1,8 +1,9 @@
 package courier;
 
-import java.util.HashMap;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
 
-import static org.hamcrest.Matchers.equalTo;
+import java.util.HashMap;
 
 public class CourierClient extends RestAssuredClient{
 
@@ -10,84 +11,32 @@ public class CourierClient extends RestAssuredClient{
     private final String LOGIN = ROOT + "/login";
     private final String COURIER = ROOT + "/{courierId}";
 
-    public boolean create(Courier courier) {
+    public ExtractableResponse<Response> create(Courier courier) {
         return regSpec
                 .body(courier)
                 .when()
                 .post(ROOT)
                 .then().log().all()
-                .assertThat()
-                .statusCode(201)
-                .extract()
-                .path("ok");
+                .extract();
     }
 
-    public void createWithDuplicateLogin(Courier courier) {
-         regSpec
-                .body(courier)
-                .when()
-                .post(ROOT)
-                .then().log().all()
-                .assertThat().body("message", equalTo("Этот логин уже используется. Попробуйте другой."))
-                .and()
-                .statusCode(409);
-    }
-
-    public void createWithoutLoginOrPassword(Courier courier) {
-        regSpec
-                .body(courier)
-                .when()
-                .post(ROOT)
-                .then().log().all()
-                .assertThat().body("message", equalTo("Недостаточно данных для создания учетной записи"))
-                .and()
-                .statusCode(400);
-    }
-
-    public int login(CourierCredentials creds) {
+    public ExtractableResponse<Response> login(CourierCredentials creds) {
         return regSpec
                 .body(creds)
                 .when()
                 .post(LOGIN)
                 .then().log().all()
-                .assertThat()
-                .statusCode(200)
-                .extract()
-                .path("id");
+                .extract();
     }
 
-    public void loginWithIncorrectData(CourierCredentials creds) {
-        regSpec
-                .body(creds)
-                .when()
-                .post(LOGIN)
-                .then().log().all()
-                .assertThat().statusCode(404)
-                .and()
-                .body("message", equalTo("Учетная запись не найдена"));
-    }
-
-    public void loginWithoutLoginOrPassword(CourierCredentials creds) {
-        regSpec
-                .body(creds)
-                .when()
-                .post(LOGIN)
-                .then().log().all()
-                .assertThat().body("message", equalTo("Недостаточно данных для входа"))
-                .and()
-                .statusCode(400);
-    }
-
-    public void delete(int courierId) {
+    public ExtractableResponse<Response> delete(int courierId) {
         HashMap params = new HashMap<String, Number>();
         params.put("courierId",  (courierId));
-        regSpec
-//                .pathParams("courierId", String.valueOf(courierId))
+        return regSpec
                 .when()
                 .delete(COURIER, params)
                 .then().log().all()
-                .assertThat()
-                .statusCode(200);
+                .extract();
     }
 
 }

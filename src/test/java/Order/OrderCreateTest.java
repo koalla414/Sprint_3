@@ -1,12 +1,15 @@
 package Order;
 
-import io.qameta.allure.junit4.DisplayName;
 import io.qameta.allure.Description;
+import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
@@ -40,10 +43,10 @@ public class OrderCreateTest {
     public void shouldCreateOrderWithColor() {
         Order order = Order.getRandomOrder(); // сгенерировали данные заказа
         order.setColor(selectedColor); // установили выбранный цвет
-        int created = orderClient.create(order); // регистрация заказа - отправили сгенерированные данные на ручку АПИ
+        ExtractableResponse<Response> createResponse = orderClient.create(order);
+        assertEquals(201, createResponse.statusCode());
 
-        trackOrder = orderClient.create(order);
-
+        trackOrder = createResponse.path("track");
         assertTrue(trackOrder > 0);
     }
 

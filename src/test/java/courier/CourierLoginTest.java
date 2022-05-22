@@ -2,9 +2,12 @@ package courier;
 
 import io.qameta.allure.junit4.DisplayName;
 import io.qameta.allure.Description;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 public class CourierLoginTest {
@@ -21,12 +24,17 @@ public class CourierLoginTest {
     @Description("Создаем курьера, логинимся под ним.")
     public void loginCourierSuccessful() {
         Courier courier = Courier.getRandomCourier(); // сгенерировали данные пользователя
-        boolean created = courierClient.create(courier); // регистрации пользователя - отправили сгенерированные данные на ручку АПИ
+        ExtractableResponse<Response> createResponse = courierClient.create(courier);
+        assertEquals(201, createResponse.statusCode());
+        boolean created = createResponse.path("ok"); // регистрация пользователя - отправили сгенерированные данные на ручку АПИ
 
         CourierCredentials creds = CourierCredentials.from(courier); // получаем учетные данные созданного пользователя
-        courierId = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        ExtractableResponse<Response> loginResponse = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        assertEquals(200, loginResponse.statusCode());
+        courierId = loginResponse.path("id");
 
-        courierClient.delete(courierId); // удаляем созданного пользователя
+        ExtractableResponse<Response>  deleteResponse = courierClient.delete(courierId);
+        assertEquals(200, deleteResponse.statusCode());// удаляем созданного пользователя
     }
 
     @Test
@@ -34,16 +42,23 @@ public class CourierLoginTest {
     @Description("Создаем курьера, логинимся под ним, искажаем пароль в учетных данных, и логинимся с испорченным паролем, убеждаемся, что что возвращается ошибка.")
     public void loginWithModifiedPasswordIsNotFound() {
         Courier courier = Courier.getRandomCourier(); // сгенерировали данные пользователя
-        boolean created = courierClient.create(courier); // регистрации пользователя - отправили сгенерированные данные на ручку АПИ
+        ExtractableResponse<Response> createResponse = courierClient.create(courier);
+        assertEquals(201, createResponse.statusCode());
+        boolean created = createResponse.path("ok"); // регистрация пользователя - отправили сгенерированные данные на ручку АПИ
 
         CourierCredentials creds = CourierCredentials.from(courier); // получаем учетные данные созданного пользователя
-        courierId = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        ExtractableResponse<Response> loginResponse = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        assertEquals(200, loginResponse.statusCode());
+        courierId = loginResponse.path("id");
         courier.setPassword(courier.getPassword()+"I"); // исказили пароль
         creds = CourierCredentials.from(courier); // получаем учетные данные с искаженным паролем
 
-        courierClient.loginWithIncorrectData(creds); // логинимся с испорченным паролем
+        loginResponse = courierClient.login(creds); // логинимся с испорченным паролем
+        assertEquals(404, loginResponse.statusCode());
+        assertEquals("Учетная запись не найдена", loginResponse.path("message"));
 
-        courierClient.delete(courierId); // удаляем созданного пользователя
+        ExtractableResponse<Response>  deleteResponse = courierClient.delete(courierId);
+        assertEquals(200, deleteResponse.statusCode());// удаляем созданного пользователя
     }
 
     @Test
@@ -51,18 +66,25 @@ public class CourierLoginTest {
     @Description("Создаем курьера, логинимся под ним, удаляем пароль в учетных данных, и логинимся с пустым паролем, убеждаемся, что что возвращается ошибка.")
     public void loginWithoutPasswordIsBadRequest() {
         Courier courier = Courier.getRandomCourier(); // сгенерировали данные пользователя
-        boolean created = courierClient.create(courier); // регистрации пользователя - отправили сгенерированные данные на ручку АПИ
+        ExtractableResponse<Response> createResponse = courierClient.create(courier);
+        assertEquals(201, createResponse.statusCode());
+        boolean created = createResponse.path("ok"); // регистрация пользователя - отправили сгенерированные данные на ручку АПИ
 
         CourierCredentials creds = CourierCredentials.from(courier); // получаем учетные данные созданного пользователя
-        courierId = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        ExtractableResponse<Response> loginResponse = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        assertEquals(200, loginResponse.statusCode());
+        courierId = loginResponse.path("id");
         courier.setPassword(""); // удалили пароль
 
         creds = CourierCredentials.from(courier); // получаем учетные данные с искаженным паролем
 
 
-        courierClient.loginWithoutLoginOrPassword(creds); // логинимся с пустым паролем
+        loginResponse = courierClient.login(creds); // логинимся с пустым паролем
+        assertEquals(400, loginResponse.statusCode());
+        assertEquals("Недостаточно данных для входа", loginResponse.path("message"));
 
-        courierClient.delete(courierId); // удаляем созданного пользователя
+        ExtractableResponse<Response>  deleteResponse = courierClient.delete(courierId);
+        assertEquals(200, deleteResponse.statusCode());// удаляем созданного пользователя
     }
 
     @Test
@@ -70,14 +92,22 @@ public class CourierLoginTest {
     @Description("Создаем курьера, логинимся под ним, удаляем его, и логинимся под удаленным курьером, убеждаемся, что что возвращается ошибка.")
     public void loginWithNonexistentCourierIsNotFound() {
         Courier courier = Courier.getRandomCourier(); // сгенерировали данные пользователя
-        boolean created = courierClient.create(courier); // регистрации пользователя - отправили сгенерированные данные на ручку АПИ
+        ExtractableResponse<Response> createResponse = courierClient.create(courier);
+        assertEquals(201, createResponse.statusCode());
+        boolean created = createResponse.path("ok"); // регистрация пользователя - отправили сгенерированные данные на ручку АПИ
 
         CourierCredentials creds = CourierCredentials.from(courier); // получаем учетные данные созданного пользователя
-        courierId = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        ExtractableResponse<Response> loginResponse = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        assertEquals(200, loginResponse.statusCode());
+        courierId = loginResponse.path("id");
 
-        courierClient.delete(courierId); // удаляем созданного пользователя
+        ExtractableResponse<Response>  deleteResponse = courierClient.delete(courierId);
+        assertEquals(200, deleteResponse.statusCode());// удаляем созданного пользователя
         courierClient = new CourierClient();
-        courierClient.loginWithIncorrectData(creds); // логинимся под удаленным пользователем
+
+        loginResponse = courierClient.login(creds); // логинимся под удаленным курьером
+        assertEquals(404, loginResponse.statusCode());
+        assertEquals("Учетная запись не найдена", loginResponse.path("message"));
     }
 
     @Test
@@ -85,14 +115,19 @@ public class CourierLoginTest {
     @Description("Создаем курьера, логинимся под ним, убеждаемся, что вернулся ID.")
     public void loginCourierSuccessfulReturnId() {
         Courier courier = Courier.getRandomCourier(); // сгенерировали данные пользователя
-        boolean created = courierClient.create(courier); // регистрации пользователя - отправили сгенерированные данные на ручку АПИ
+        ExtractableResponse<Response> createResponse = courierClient.create(courier);
+        assertEquals(201, createResponse.statusCode());
+        boolean created = createResponse.path("ok"); // регистрация пользователя - отправили сгенерированные данные на ручку АПИ
 
         CourierCredentials creds = CourierCredentials.from(courier); // получаем учетные данные созданного пользователя
-        courierId = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        ExtractableResponse<Response> loginResponse = courierClient.login(creds); // получаем ID путем авторизации с полученными учетными данными
+        assertEquals(200, loginResponse.statusCode());
+        courierId = loginResponse.path("id");
 
         assertNotEquals(0, courierId); // проверяем, что ID ненулевой
 
-        courierClient.delete(courierId); // удаляем созданного пользователя
+        ExtractableResponse<Response>  deleteResponse = courierClient.delete(courierId);
+        assertEquals(200, deleteResponse.statusCode());// удаляем созданного пользователя
     }
 
 }
